@@ -57,6 +57,42 @@ module After
   module_function :levenshtein_distance
 end
 
+module AfterRescue
+  # Returns a value representing the "cost" of transforming str1 into str2
+  def levenshtein_distance(str1, str2)
+    begin
+      require 'did_you_mean/levenshtein'
+      DidYouMean::Levenshtein.distance(str1, str2)
+    rescue LoadError
+      Before.levenshtein_distance(str1, str2)
+    end
+  end
+
+  module_function :levenshtein_distance
+end
+
+
+module AfterPatch
+  # Returns a value representing the "cost" of transforming str1 into str2
+  def levenshtein_distance(str1, str2)
+    raise 'should be overridden'
+  end
+
+  module_function :levenshtein_distance
+end
+
+begin
+  require 'did_you_mean/levenshtein'
+  module AfterPatch
+    # Returns a value representing the "cost" of transforming str1 into str2
+    def levenshtein_distance(str1, str2)
+      DidYouMean::Levenshtein.distance(str1, str2)
+    end
+    module_function :levenshtein_distance
+  end
+rescue LoadError; end
+
+
 if $PROGRAM_NAME == __FILE__
   require 'benchmark/ips'
 
@@ -85,6 +121,12 @@ if $PROGRAM_NAME == __FILE__
     end
     x.report("After") do
       After.levenshtein_distance str1, str2
+    end
+    x.report("AfterRescue") do
+      AfterRescue.levenshtein_distance str1, str2
+    end
+    x.report("AfterPatch") do
+      AfterPatch.levenshtein_distance str1, str2
     end
   end
 
